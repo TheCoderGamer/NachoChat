@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 
 public class Client {
+    private Server server;
     private String username;
     private InetAddress ip;
     private int port;
@@ -14,10 +15,11 @@ public class Client {
     private Socket sc;
     private DataInputStream in;
     private DataOutputStream out;
-    private boolean online;
+    boolean online;
     public Thread thread;
 
     public Client (Server server, String username, InetAddress ip, int port, int ID, Socket sc, DataInputStream in, DataOutputStream out) {
+        this.server = server;
         this.username = username;
         this.ip = ip;
         this.port = port;
@@ -33,26 +35,47 @@ public class Client {
                 while (online) {
                     try {
                         String message = new String(readPacket());
-                        System.out.println(message);
-                        server.sendToAll(message);
+                        mannageMessage(message);
                     }
-                    catch (IOException e) {
-                        e.printStackTrace();
+                    catch (Exception e) {
+                        server.kick(Client.this);
                     }
                 } 
-            }
-            private byte[] readPacket() throws IOException {
-                int length = in.readInt();
-                if(length>0) {
-                    byte[] message = new byte[length];
-                    in.readFully(message, 0, message.length);
-                    System.out.println("Packet received");
-                    return message;
-                }
-                return null;
-            }
+            } 
         };
         thread.start();
+    }
+
+    private void mannageMessage(String message) {
+        if (message.startsWith("/quit")) {
+            server.kick(Client.this);
+        }
+        else if (message.startsWith("/users/")) {
+
+        }
+        else {
+            String fullMessage = String.format("<%s> %s", username, message);
+            server.sendToAll(fullMessage);
+        }
+    }
+
+    private byte[] readPacket() throws Exception {
+        int length = in.readInt();
+        if(length>0) {
+            byte[] message = new byte[length];
+            in.readFully(message, 0, message.length);
+            return message;
+        }
+        return null;
+    }
+
+    void closeConnection() {
+        try {
+            sc.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 
     public void sendMessage(byte[] data) throws IOException {
@@ -61,16 +84,6 @@ public class Client {
         if (len > 0) {
             out.write(data, 0, len);
         }
-    }
-
-    public void kick(){
-        online = false;
-        try {
-            sc.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        // necesita ser eliminado desde fuera
     }
 
     public String getUsername() {

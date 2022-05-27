@@ -1,5 +1,6 @@
 package com.thecoder.nachochat.Client;
 
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.EventQueue;
 import java.io.DataInputStream;
@@ -29,7 +30,10 @@ public class ClientMain {
     static Thread read;
     
     public static void main(String[] args) throws Exception {   
-        
+        requestLogin();
+    }
+    
+    private static void requestLogin() {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
@@ -39,6 +43,7 @@ public class ClientMain {
                 } 
                 catch (Exception e) {
                     Logger.log("Error starting client", "ERROR", e);
+                    System.exit(1);
                 }
             }
         });
@@ -52,37 +57,54 @@ public class ClientMain {
             sc = new Socket(ip, port);
             in = new DataInputStream(sc.getInputStream());
             out = new DataOutputStream(sc.getOutputStream());
-
-            loginFrame.dispose();
-            chatGUI = new ChatGUI();
         }
         catch (UnknownHostException e){
-            Logger.log("IP address is invalid", "ERROR", e);
+            Logger.log("IP address is invalid", "ERROR");
+            noConnection();
+            return;
         } 
         catch (ConnectException e){
-            Logger.log("No server is running on the specified port", "ERROR", e);
-            noHost();
+            Logger.log("No server is running on the specified port", "ERROR");
+            noConnection();
+            return;
         }
         catch (IOException e) {
             Logger.log("Error conecting to server", "ERROR", e);
+            noConnection();
+            return;
         } 
-
+        
+        if(!initializeConnection(username)){
+            Logger.log("Error initializing connection", "ERROR");
+            msgErrorBox(loginFrame, "Error initializing connection");
+            noConnection();
+            return;
+        }
+        // Conexion exitosa
+        loginFrame.dispose();
+        chatGUI = new ChatGUI();
+        Logger.log("Succesfully connected to server");
         online = true;
+
 
         read = new Thread("Read"){
             public void run(){
                 while(online){
                     try {
                         chatGUI.sendToHistory(new String(readPacket()));
-                    } catch (IOException e) {
-                        Logger.log("Error reading packet", "ERROR", e);
+                    }
+                    catch (Exception e) {
+                        if (online) { 
+                            disconnect(); 
+                            Logger.log("Error reading packet, disconecting", "ERROR");
+                        }
                     }
                 }
             }
         };
         read.start();
     }
-    private static byte[] readPacket() throws IOException {
+    private static byte[] readPacket() throws Exception {
         int length = in.readInt();
         if(length>0) {
             byte[] message = new byte[length];
@@ -92,13 +114,27 @@ public class ClientMain {
         return null;
     }
 
+    private static boolean initializeConnection(String username) {
+        try {
+            // Send username
+            sendBytes(username.getBytes());
+            Logger.log("Sending username");
+            return true;
+        }
+        catch (IOException e) {
+            return false;
+        }
+    }
+
     public static void send(String message) {
         message.trim();
         try {
             sendBytes(message.getBytes());
-            Logger.log("Message sent: " + message);
-        } catch (IOException e) {
+            Logger.log(message, "CHAT");
+        }
+        catch (IOException e) {
             Logger.log("Error sending message", "ERROR", e);
+            msgErrorBox(chatGUI, "Error sending message");
         }
     } 
     private static void sendBytes(byte[] data) throws IOException {
@@ -110,16 +146,28 @@ public class ClientMain {
     }
 
     public static void disconnect() {
+        online = false;
         try {
             sc.close();
+            Logger.log("Disconnected from server");
+            msgBox(chatGUI, "Desconectado del servidor");
             System.exit(0);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             Logger.log("Error closing socket", "ERROR", e);
+            System.exit(1);
         }
     }
 
-    private static void noHost(){
+    private static void noConnection(){
         loginFrame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-        JOptionPane.showMessageDialog(loginFrame, "No se ha podido conectar a la direccion y puerto indicados", "Error", JOptionPane.OK_OPTION);
+        msgErrorBox(loginFrame, "No se ha podido conectar a la direccion y puerto indicados");
+    }
+
+    private static void msgErrorBox(Component parent, String message) {
+        JOptionPane.showMessageDialog(parent, message, "Error", JOptionPane.OK_OPTION);
+    }
+    private static void msgBox(Component parent, String message) {
+        JOptionPane.showMessageDialog(parent, message);
     }
 }

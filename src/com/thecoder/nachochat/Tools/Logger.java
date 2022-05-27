@@ -11,6 +11,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date; 
 
 public class Logger {
+    public static boolean debug = false;
+
     public static void log(String message) {
         print(message, null, null);
     }
@@ -28,11 +30,20 @@ public class Logger {
         SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");  
         Date date = new Date();
         String logMSG;
-        if (type != null) {
-            logMSG = String.format("[%s] <%s> [%s] %s",formatter.format(date), KDebug.getCallerCallerClassName(), type, message);
+        
+        String debugData;
+        if (debug){
+            debugData = " <"+KDebug.getCallerCallerClassName()+">";
         }
         else {
-            logMSG = String.format("[%s] <%s> [INFO] %s",formatter.format(date), KDebug.getCallerCallerClassName(), message);
+            debugData = "";
+        }
+        
+        if (type != null) {
+            logMSG = String.format("[%s]%s [%s] %s",formatter.format(date), debugData, type, message);
+        }
+        else {
+            logMSG = String.format("[%s]%s [INFO] %s",formatter.format(date), debugData, message);
         }
 
         if (e != null) {
@@ -55,7 +66,8 @@ public class Logger {
             bufferedWriter.write(logMSG);
             bufferedWriter.newLine();
             bufferedWriter.close();
-        } catch (IOException ex) {
+        }
+        catch (IOException ex) {
             ex.printStackTrace();
             System.out.println("Error al escribir en el log");
         }

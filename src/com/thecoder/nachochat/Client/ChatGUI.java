@@ -62,7 +62,13 @@ public class ChatGUI extends JFrame {
 		mnFile.add(mntmOnlineUsers);
 
 		mntmExit = new JMenuItem("Exit");
+		mntmExit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				ClientMain.disconnect();
+			}
+		});
 		mnFile.add(mntmExit);
+		
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -124,10 +130,7 @@ public class ChatGUI extends JFrame {
 
 		addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent e) {
-				//String disconnect = "/d/" + client.getID() + "/e/";
-				//send(disconnect, false);
-				//running = false;
-				//client.close();
+				ClientMain.disconnect();
 			}
 		});
 
