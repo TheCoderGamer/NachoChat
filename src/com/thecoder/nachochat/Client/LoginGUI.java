@@ -95,11 +95,11 @@ public class LoginGUI  extends JFrame {
     	btLogin.setBounds(124, 300, 106, 50);
 		btLogin.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String username = txtUsername.getText().trim();
-				String ip = txtIP.getText();
-				String stport = txtPort.getText();
+				String username = txtUsername.getText().replace(" ", "");
+				String ip = txtIP.getText().replace(" ", "");
+				String stport = txtPort.getText().replace(" ", "");
 				
-				if (username.isBlank() || ip.isBlank() || stport.isBlank()) {
+				if (username.isEmpty() || ip.isEmpty() || stport.isEmpty()) {
 					JOptionPane.showMessageDialog(null, "No puedes dejar ningun campo vacio", "Error", JOptionPane.ERROR_MESSAGE);
 					return;
 				}
