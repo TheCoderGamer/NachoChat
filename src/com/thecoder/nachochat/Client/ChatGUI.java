@@ -14,8 +14,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.DocumentFilter;
 
-import com.thecoder.nachochat.Server.Client;
-
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
