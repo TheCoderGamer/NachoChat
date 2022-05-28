@@ -123,7 +123,6 @@ public class ChatGUI extends JFrame {
 		gbc_txtMessage.weighty = 0;
 		contentPane.add(txtMessage, gbc_txtMessage);
 		txtMessage.setColumns(10);
-		// TODO: Limitar el tamaño
 
 		JButton btnSend = new JButton("Enviar");
 		btnSend.addActionListener(new ActionListener() {
