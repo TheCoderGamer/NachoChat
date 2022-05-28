@@ -12,6 +12,14 @@ import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.DefaultCaret;
+import javax.swing.text.DocumentFilter;
+
+import com.thecoder.nachochat.Server.Client;
+
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -32,6 +40,7 @@ public class ChatGUI extends JFrame {
 	private JMenu mnFile;
 	private JMenuItem mntmOnlineUsers;
 	private JMenuItem mntmExit;
+
 	
 	public ChatGUI() {
 		createWindow();
@@ -56,7 +65,7 @@ public class ChatGUI extends JFrame {
 		mntmOnlineUsers = new JMenuItem("Online Users");
 		mntmOnlineUsers.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				//users.setVisible(true);
+				ClientMain.showUserlist();
 			}
 		});
 		mnFile.add(mntmOnlineUsers);
@@ -96,6 +105,7 @@ public class ChatGUI extends JFrame {
 		contentPane.add(scroll, scrollConstraints);
         
 		txtMessage = new JTextField();
+		((AbstractDocument)txtMessage.getDocument()).setDocumentFilter(new LimitDocumentFilter(50));
 		txtMessage.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
@@ -113,6 +123,7 @@ public class ChatGUI extends JFrame {
 		gbc_txtMessage.weighty = 0;
 		contentPane.add(txtMessage, gbc_txtMessage);
 		txtMessage.setColumns(10);
+		// TODO: Limitar el tamaño
 
 		JButton btnSend = new JButton("Enviar");
 		btnSend.addActionListener(new ActionListener() {
@@ -149,4 +160,28 @@ public class ChatGUI extends JFrame {
 		history.setCaretPosition(history.getDocument().getLength());
     }
 
+	public class LimitDocumentFilter extends DocumentFilter {
+		
+		private int limit;
+
+		public LimitDocumentFilter(int limit) {
+			if (limit <= 0) {
+				throw new IllegalArgumentException("Limit can not be <= 0");
+			}
+			this.limit = limit;
+		}
+
+		@Override
+		public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+			int currentLength = fb.getDocument().getLength();
+			int overLimit = (currentLength + text.length()) - limit - length;
+			if (overLimit > 0) {
+				text = text.substring(0, text.length() - overLimit);
+			}
+			if (text.length() > 0 || length > 0) {
+				super.replace(fb, offset, length, text, attrs); 
+			}
+		}
+
+	}
 }

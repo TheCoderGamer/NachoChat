@@ -6,12 +6,14 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 
+import com.thecoder.nachochat.Tools.Logger;
+
 public class Client {
     private Server server;
     private String username;
     private InetAddress ip;
     private int port;
-    private final int ID;
+    private int ID;
     private Socket sc;
     private DataInputStream in;
     private DataOutputStream out;
@@ -37,7 +39,8 @@ public class Client {
                         String message = new String(readPacket());
                         mannageMessage(message);
                     }
-                    catch (Exception e) {
+                    catch (IOException e) {
+                        Logger.log("Error reading message", "ERROR", e);
                         server.kick(Client.this);
                     }
                 } 
@@ -46,12 +49,26 @@ public class Client {
         thread.start();
     }
 
-    private void mannageMessage(String message) {
+    private void mannageMessage (String message) {
         if (message.startsWith("/quit")) {
             server.kick(Client.this);
         }
-        else if (message.startsWith("/users/")) {
-
+        else if (message.startsWith("/cmd/")) {
+            // Manage commands
+            message = message.substring(5);
+            if (message.equals("getUsers")){
+                String users = "/cmd/users/";
+                for (String c : server.getUsers()) {
+                    users += c + "/n/";
+                }
+                try {
+                    System.out.println("Sending: " + users);
+                    sendMessageThread(users.getBytes());
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         else {
             String fullMessage = String.format("<%s> %s", username, message);
@@ -59,7 +76,7 @@ public class Client {
         }
     }
 
-    private byte[] readPacket() throws Exception {
+    private byte[] readPacket() throws IOException   {
         int length = in.readInt();
         if(length>0) {
             byte[] message = new byte[length];
@@ -85,6 +102,21 @@ public class Client {
             out.write(data, 0, len);
         }
     }
+    private void sendMessageThread(byte[] data) throws IOException {
+        Thread send = new Thread("Send") {
+            public void run() {
+                try {
+                    sleep(100);
+                    sendMessage(data);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e1) {
+                    e1.printStackTrace();
+                }
+            }
+        };
+        send.start();
+    }
 
     public String getUsername() {
         return username;
@@ -106,5 +138,8 @@ public class Client {
     }
     public DataOutputStream getOut() {
         return out;
+    }
+    public void setID(int ID){
+        this.ID = ID;
     }
 }

@@ -26,10 +26,17 @@ public class ClientMain {
     
     static boolean online = false;
     static ChatGUI chatGUI;
+    static UserlistGUI userlistGUI;
 
     static Thread read;
     
     public static void main(String[] args) throws Exception {   
+        Logger.level = Logger.Level.NONE;
+        if (args.length == 1) {
+            if (args[0].matches("0|1|2|3")) {
+                Logger.setLevel(Integer.parseInt(args[0]));
+            }
+        }
         requestLogin();
     }
     
@@ -74,10 +81,11 @@ public class ClientMain {
             return;
         } 
         
-        if(!initializeConnection(username)){
-            Logger.log("Error initializing connection", "ERROR");
-            msgErrorBox(loginFrame, "Error initializing connection");
-            noConnection();
+        String status = initializeConnection(username);
+        if (status.startsWith("/err/")){
+            String errorMsg = "Error: " + status.substring(5);
+            Logger.log(errorMsg, "ERROR");
+            msgErrorBox(loginFrame, errorMsg);
             return;
         }
         // Conexion exitosa
@@ -91,7 +99,7 @@ public class ClientMain {
             public void run(){
                 while(online){
                     try {
-                        chatGUI.sendToHistory(new String(readPacket()));
+                        manageIncomingMessages(new String(readPacket()));
                     }
                     catch (Exception e) {
                         if (online) { 
@@ -114,20 +122,28 @@ public class ClientMain {
         return null;
     }
 
-    private static boolean initializeConnection(String username) {
+    private static String initializeConnection(String username) {
         try {
+           // Wait for server to accept connection
+           String data = new String(readPacket());
+           if (!data.equals("/ack/")) { 
+                return data;
+            }
+           
             // Send username
             sendBytes(username.getBytes());
             Logger.log("Sending username");
-            return true;
+            return "";
         }
-        catch (IOException e) {
-            return false;
+        catch (Exception e) {
+            return "/err/Error conectando al servidor";
         }
     }
 
     public static void send(String message) {
-        message.trim();
+        message = message.trim();
+        message = message.replaceAll("/cmd/", "");
+
         try {
             sendBytes(message.getBytes());
             Logger.log(message, "CHAT");
@@ -159,6 +175,38 @@ public class ClientMain {
         }
     }
 
+    private static void manageIncomingMessages (String message) {
+        if (message.startsWith("/err/")) {
+            String errorMsg = "Error: " + message.substring(5);
+            Logger.log(errorMsg, "ERROR");
+            msgErrorBox(chatGUI, errorMsg);
+            return;
+        }
+        else if (message.startsWith("/cmd/")) {
+            String cmd = message.substring(5);
+            if (cmd.startsWith("users/")) {
+                String usersMsg = cmd.substring(6);
+                System.out.println(usersMsg);
+                String[] users = usersMsg.split("/n/");
+                userlistGUI.setUsers(users);
+            }
+        }
+        else {
+            chatGUI.sendToHistory(message);
+        }
+    }
+
+    public static void showUserlist(){
+        try {
+            sendBytes("/cmd/getUsers".getBytes());
+            userlistGUI = new UserlistGUI();
+            userlistGUI.setVisible(true);
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private static void noConnection(){
         loginFrame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
         msgErrorBox(loginFrame, "No se ha podido conectar a la direccion y puerto indicados");
@@ -168,6 +216,6 @@ public class ClientMain {
         JOptionPane.showMessageDialog(parent, message, "Error", JOptionPane.OK_OPTION);
     }
     private static void msgBox(Component parent, String message) {
-        JOptionPane.showMessageDialog(parent, message);
+        JOptionPane.showMessageDialog(parent, message, "", JOptionPane.OK_OPTION);
     }
 }

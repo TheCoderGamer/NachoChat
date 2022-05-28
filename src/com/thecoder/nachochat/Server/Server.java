@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 
 import com.thecoder.nachochat.Tools.*;
 
@@ -14,17 +15,18 @@ public class Server {
     ServerSocket servidor = null;
     Thread message;
     Thread connections;
-    int ID = 0;
 
     ArrayList<Client> clients = new ArrayList<Client>();
 
     private Boolean running = false;
+    private IDManager IDmgr;
+    private int maxConnections;
 
-    public Server (){
-
-    }
-    public void start(int port) {     
+    public Server (){}
+    public void start(int port, int maxConnections) {
         running = true;
+        this.maxConnections = maxConnections;
+        IDmgr = new IDManager(maxConnections);
 
         try {
             servidor = new ServerSocket(port);
@@ -54,14 +56,28 @@ public class Server {
         Logger.log("New client connected", "CONNECTION");
         DataInputStream in = new DataInputStream(sc.getInputStream());
         DataOutputStream out = new DataOutputStream(sc.getOutputStream());
-        ID++; // TODO: buscar otra manera para evitar overflow
+
+        // Assing ID and chek if server is full
+        int id = getID();
+        if (id == -1) {
+            Logger.log("Server is full", "CONNECTION");
+            sendData("/err/El servidor esta lleno".getBytes(), in, out);
+            sc.close();
+            return;
+        }
+        
+        // Accept connection
+        sendData("/ack/".getBytes(), in, out);
+
         // Read username
         int length = in.readInt();
         byte[] message = new byte[length];
         in.readFully(message, 0, message.length);
         String username = new String(message);
-        clients.add(new Client(this, username, sc.getInetAddress(), port, ID, sc, in, out));
+        
+        clients.add(new Client(this, username, sc.getInetAddress(), port, id, sc, in, out));
         Logger.log("Successfully connected to client <" + username + ">", "CONNECTION");
+        
         sendToAll(String.format("<%s> se ha conectado!", username));
     }
 
@@ -112,4 +128,56 @@ public class Server {
         sendToAll("<" + user + "> se ha desconectado!");
     }
 
+    private int getID() {
+        int id = IDmgr.getID();
+        if (id == -1) {
+            if (clients.size() >= maxConnections){
+                // Server full
+                return -1;
+            }
+            else {
+                IDmgr.disposeAllIDs();
+                for (Client c : clients) {
+                    c.setID(IDmgr.getID());
+                }
+                return IDmgr.getID();
+            }
+        }
+        else {
+            return id;
+        }
+    }
+
+    private void sendData(byte[] data, DataInputStream in, DataOutputStream out) throws IOException {
+        int len = data.length;
+        out.writeInt(len);
+        if (len > 0) {
+            out.write(data, 0, len);
+        }
+    }
+
+}
+
+class IDManager {
+    private ArrayList<Integer> id = new ArrayList<Integer>();
+    private int index = 0;
+    
+    public IDManager(int maxIDs){
+        for (int i = 0; i <= maxIDs; i++) {
+            id.add(i);
+        }
+        Collections.shuffle(id);
+        index = 0;
+    }
+
+    public int getID(){
+        if (index == id.size()-1) {
+            return -1;
+        }
+        return id.get(index++);
+    }
+
+    public void disposeAllIDs(){
+        id.clear();
+    }
 }
